@@ -33,12 +33,13 @@ def norm(f):
     f_hat : ndarray
         The row and column normalized matrix of activation.
     """
-    
-    fs = t.sqrt(f ** 2 + 1e-8)              # ensure numerical stability
-    l2fs = t.sqrt(t.sum(fs ** 2, axis=1))   # l2 norm of row
-    nfs = fs / l2fs.dimshuffle(0, 'x')      # normalize rows
-    l2fn = t.sqrt(t.sum(nfs ** 2, axis=0))  # l2 norm of column
-    f_hat = nfs / l2fn.dimshuffle('x', 0)   # normalize columns
+    # TODO: consider half-wave rectification before sparse filtering
+    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # fs = t.maximum(1e-8, f)                      # linear rectification
+    l2fs = t.sqrt(t.sum(fs ** 2, axis=1))           # l2 norm of row
+    nfs = fs / l2fs.dimshuffle(0, 'x')              # normalize rows
+    l2fn = t.sqrt(t.sum(nfs ** 2, axis=0))          # l2 norm of column
+    f_hat = nfs / l2fn.dimshuffle('x', 0)           # normalize columns
     
     return f_hat
     
@@ -59,11 +60,31 @@ def convolutional_norm(f):
         The row and column normalized matrix of activation.
     """
 
-    fs = t.sqrt(f ** 2 + 1e-8)                   # ensure numerical stability
-    l2fs = t.sqrt(t.sum(fs ** 2, axis=0))        # l2 norm of example dimension
-    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)     # normalize non-example dimensions
-    l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))       # l2 norm of neuron dimension
-    f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)  # normalize non-neuron dimensions
+    """ original """
+    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
+    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
+    f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
+
+    # """ across image space """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1, 2, 3]))  # axis=1))
+    # #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
+    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
+
+    # """ new concept from TODO """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[2, 3]))     # l2 norm of image space
+    # nfs_2 = nfs / l2fn.dimshuffle(0, 1, 'x', 'x')   # normalize across non-image dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=1))       # l2 norm of neuron dimension
+    # f_hat = nfs_2 / l2fn.dimshuffle(0, 'x', 1, 2)  # normalize non-neuron dimensions
 
     return f_hat
 
@@ -118,7 +139,8 @@ class SparseFilter(object):
         
         """ Returns L1 error in reconstruction """
         
-        activation = self.dot()
+        # activation = self.dot()
+        activation = t.maximum(0, self.dot())
         reconstruction = t.dot(self.w.T, activation)
         error = t.sum(t.abs_(self.x - reconstruction))
         
@@ -151,14 +173,15 @@ class ConvolutionalSF(SparseFilter):
         
         """ Convolve input with model weights """        
         
-        f = conv2d(self.x, self.w, subsample=(1, 1))
-        
+        f = conv2d(self.x, self.w, subsample=(1, 1))  #, border_mode='full')
+        # f = max_pool_2d(conv2d(self.x, self.w, subsample=(1, 1)), ds=(2, 2))  #, border_mode='full')
+
         return f
     
     def feed_forward(self):
-        
+
         """ Performs convolutional sparse filtering procedure """
-     
+
         f_hat = self.norm(self.dot())
         
         return f_hat
@@ -179,9 +202,12 @@ class ConvolutionalSF(SparseFilter):
         
         """ Perform 2D max pooling """
         
-        return max_pool_2d(self.feed_forward(), ds=(2, 2))
-    
-    
+        # return max_pool_2d(self.feed_forward(), ds=(2, 2))
+        # return max_pool_2d(self.dot(), ds=(2, 2))  # returning non-normalized activations
+        rectified = t.maximum(0, self.dot())
+        return max_pool_2d(rectified, ds=(2, 2))  # returning non-normalized activations
+
+
 class GroupSF(SparseFilter):
     
     """ Group Sparse Filtering """
@@ -345,7 +371,7 @@ class Layer(object):
     
     """ Layer object within network """
     
-    def __init__(self, model_type='SF', weight_dims=(100, 256), layer_input=None, 
+    def __init__(self, model_type='SparseFilter', weight_dims=(100, 256), layer_input=None,
                  p=None, group_size=None, step=None, lr=0.01, c = 'n'):   
         
         """
@@ -410,7 +436,27 @@ class Layer(object):
             gf_hat = None
             
         return gf_hat
-        
+
+    def max_pool(self):
+
+        """ Return max-pooled output """
+
+        if self.c == 'y':
+            pooled = self.model.max_pool()
+        else:
+            pooled = None
+
+        return pooled
+
+    # def rectify(self):
+    #
+    #     if self.c == 'y':
+    #         rectified = t.maximum(0, self.model.dot())
+    #     else:
+    #         None
+    #
+    #     return rectified
+
     def criterion(self):
         
         """ Return the criterion for model evaluation """
@@ -430,13 +476,14 @@ class Layer(object):
         
         """ Returns the cost and flattened gradients for the layer """ 
          
-        cost = t.sum(t.abs_(self.criterion()))  # TODO: explore log in cost function
+        # cost = t.sum(t.abs_(self.criterion()))  # TODO: explore log in cost function (i.e., log(t.dot(w, y^2) + 1))
+        cost = t.sum(t.abs_(t.log(self.criterion() + 1)))
         grads = t.grad(cost=cost, wrt=self.w).flatten()
         
         return cost, grads
     
     def get_weights(self):
-        
+
         """ Returns the weights of the layer """        
         
         weights = self.w
@@ -450,14 +497,21 @@ class Layer(object):
         reconstruct_error = self.model.reconstruct_error()
         
         return reconstruct_error
-        
+
+    def get_activations(self):
+
+        # activation = self.model.dot()
+        activation = t.maximum(0, self.model.dot())
+
+        return activation
+
         
 class Network(object):
     
     """ Neural network architecture """
     
-    def __init__(self, model_type='SF', weight_dims=([100, 256], []), p=None,
-                 group_size=None, step=None, lr=0.01, opt='GD', c='n'):
+    def __init__(self, model_type='SparseFilter', weight_dims=([100, 256], []), p=None,
+                 group_size=None, step=None, lr=0.01, opt='GD', c='n', test='n'):
         
         """
         Neural network constructor. Defines a network architecture that builds 
@@ -486,11 +540,13 @@ class Network(object):
         """        
         
         # assign the inputs to the network
+        self.model = model_type
         self.layers = []
         self.n_layers = len(weight_dims)
         self.opt = opt
         self.weight_dims = weight_dims
         self.c = c
+        self.test = test
         
         # define symbolic variable for input data based on network type
         if self.c == 'n': 
@@ -501,23 +557,24 @@ class Network(object):
         # for each layer, create a layer object
         for l in xrange(self.n_layers):
             
-            if l == 0:  # first layer
+            if l == 0:                                                      # first layer
                 layer_input = self.x
-                if self.c == 'y': 
-                    weight_dims[l].insert(1, 1)
 
-            else:  # subsequent layers
+            else:                                                           # subsequent layers
                 if self.c == 'n':
                     layer_input = self.layers[l - 1].feed_forward()
-                else:  # i.e., convolutional
-                    layer_input = self.layers[l - 1].max_pool()
-                    layer_input = LCN(layer_input, kernel_shape=5)
-                    weight_dims[l].insert(1, weight_dims[l - 1][0])
-                    
-            self.weight_dims = weight_dims  # update weight_dims
-            
+                else:                                                       # i.e., convolutional
+                    layer_input = self.layers[l - 1].max_pool()             # TODO: pass f in feed-forward, not f_hat
+                    # TODO: linear rectified units before pooling!!!
+
+                    # perform LCN for each channel before passing to next level
+                    for m in xrange(self.layers[l - 1].weight_dims[0]):
+                        layer_input = t.set_subtensor(layer_input[:, m, :, :],
+                                                      LCN(layer_input[:, m, :, :].dimshuffle(0, 'x', 1, 2),
+                                                      kernel_shape=5))
+
             # define layer and append to network layers
-            layer_l = Layer(model_type, weight_dims[l], layer_input, p, group_size, step, lr, c)
+            layer_l = Layer(model_type[l], weight_dims[l], layer_input, p, group_size, step, lr, c)
             self.layers.append(layer_l)
 
     def training_functions(self, data):  # TODO: Move training_functions to __init__ so that train_fn is not overwritten
@@ -542,23 +599,38 @@ class Network(object):
         # initialize empty function lists
         train_fns = []
         out_fns = []
+        test_fn = []
         
-        # for each layer define a training function and output function
+        # for each layer define a training, output, and test function
         for l in self.layers:
-            
-            if self.opt == 'GD':  # if gradient descent optimization
-                cost, updates = l.get_cost_updates()
-                w = l.get_weights()
-                fn = theano.function([], outputs=[cost, w], updates=updates, 
-                                     givens={self.x: data})
+
+            # get outputs for theano functions
+            w = l.get_weights()
+            cost, updates = l.get_cost_updates()
+            _, grads = l.get_cost_grads()
+            f = l.get_activations()
+            f_hat = l.feed_forward()
+
+            if self.c == 'y':
+                f_hat_shuffled = f_hat.dimshuffle(1, 0, 2, 3)
+            else:
+                f_hat_shuffled = None
+
+            rec, err = l.get_rec_err()
+            pooled = l.max_pool()
+
+            # get training function
+            if self.opt == 'GD':
+
+                fn = theano.function([], outputs=[cost, w], updates=updates,
+                                     givens={self.x: data}, on_unused_input='ignore')
+
                 train_fns.append(fn)
-                
-            elif self.opt == 'L-BFGS':  # if L-BFGS optimization
-                cost, grads = l.get_cost_grads()
-                f_hat = l.feed_forward()
-                rec, err = l.get_rec_err()
-                fn = theano.function(inputs=[], outputs=[cost, grads, f_hat, rec, err], 
-                                     givens={self.x: data}, allow_input_downcast=True)
+
+            elif self.opt == 'L-BFGS':
+
+                fn = theano.function(inputs=[], outputs=[cost, grads], givens={self.x: data},
+                                     allow_input_downcast=True)
                                    
                 def train_fn(theta_value):
                     
@@ -585,6 +657,10 @@ class Network(object):
                         theta_value = np.asarray(theta_value.reshape(l.weight_dims[0],
                                                                      l.weight_dims[1]),
                                                  dtype=theano.config.floatX)
+
+                        # l2 normalize the weights for regularization
+                        theta_value = np.dot(theta_value, np.diag(1 / np.sqrt(np.sum(theta_value ** 2, axis=0))))
+
                     elif self.c == 'y':  # convolutional
                         theta_value = np.asarray(theta_value.reshape(l.weight_dims[0],
                                                                      l.weight_dims[1],
@@ -593,14 +669,29 @@ class Network(object):
                                                  dtype=theano.config.floatX)
                                                  
                     l.w.set_value(theta_value, borrow=True)
-                    c, g, _, _, _ = fn()
+                    c, g = fn()
                     c = np.asarray(c, dtype=np.float64)
                     g = np.asarray(g, dtype=np.float64)
                     
                     return c, g
                 
-                # append the training and output functions for layer l
+                # append the training functions for layer l
                 train_fns.append(train_fn)
-                out_fns.append(fn)
 
-        return train_fns, out_fns
+            # get output function
+            if self.c == 'y':
+                out = theano.function([], outputs=[f_hat, rec, err, f_hat_shuffled, f, pooled],
+                                      givens={self.x: data})
+            else:
+                out = theano.function([], outputs=[f_hat, rec, err, f, f, f],
+                                      givens={self.x: data})  # TODO: create better output
+
+            # TODO: create test function with test data as input
+            out_fns.append(out)
+
+            # get test function
+            if self.test == 'y':
+                test = theano.function([self.x], outputs=[f_hat])  # TODO: output f_hat shuffled?
+                test_fn.append(test)
+
+        return train_fns, out_fns, test_fn
