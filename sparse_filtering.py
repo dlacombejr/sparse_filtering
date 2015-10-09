@@ -7,14 +7,15 @@ Sparse Filtering Models
 @author: dan
 """
 
-import BP
+
 import theano
-import connections
 import numpy as np
-from scaling import LCN
-from init import init_weights
+import utilities.BP as BP
 from theano import tensor as t
+from utilities.scaling import LCN
+from utilities.init import init_weights
 from theano.tensor.nnet.conv import conv2d
+import utilities.connections as connections
 from theano.tensor.signal.downsample import max_pool_2d
 
 
@@ -60,20 +61,20 @@ def convolutional_norm(f):
         The row and column normalized matrix of activation.
     """
 
-    """ original """
-    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
-    l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
-    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-    l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
-    f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
-
-    # """ across image space """
+    # """ original """
     # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
     # l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
     # nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1, 2, 3]))  # axis=1))
-    # #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
-    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
+    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
+
+    """ across image space """
+    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
+    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1, 2, 3]))  # axis=1))
+    #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
+    f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
 
     # """ new concept from TODO """
     # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability

@@ -9,17 +9,17 @@ Executable file for testing different sparse filtering types/architectures
 
 import os
 import time
-import scaling
 import argparse
 import textwrap
-import visualize
 import numpy as np
 import cPickle as pickle
 import sparse_filtering as sf
+import utilities.scaling as scaling
+import utilities.visualize as visualize
 from scipy.io import loadmat, savemat
 from scipy.optimize import minimize
 from scipy.cluster.vq import whiten
-from parse_help import parse_dims, parse_iter
+from utilities.parse_help import parse_dims, parse_iter
 
 
 def main():
@@ -147,7 +147,7 @@ def main():
     print('Elapsed training time: %f' % elapsed)
 
     # save the model for later use
-    pickle.dump(model, open('model.pkl', 'w'), pickle.HIGHEST_PROTOCOL)
+    pickle.dump(model, open('saved/model.pkl', 'w'), pickle.HIGHEST_PROTOCOL)
 
     ''' =============================== Verbosity Options ===================================== '''
 
@@ -236,9 +236,9 @@ def main():
             # print temp
 
         # save model as well as weights and activations separately
-        savemat('weights.mat', weights)
-        savemat('activations_norm.mat', activations_norm)
-        savemat('activation_raw.mat', activations_raw)
+        savemat('saved/weights.mat', weights)
+        savemat('saved/activations_norm.mat', activations_norm)
+        savemat('saved/activation_raw.mat', activations_raw)
 
     ''' ================================ Test the Model ======================================= '''
 
