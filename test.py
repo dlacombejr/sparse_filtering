@@ -54,6 +54,7 @@ def main():
     parser.add_argument("-w", "--whitening", default='n', help="whitening: 'y' or 'n'")
     parser.add_argument("-t", "--test", default='n', help="test classification performance: 'y' or 'n")
     parser.add_argument("-a", "--channels", type=int, default=1, help="number of channels in data")
+    parser.add_argument("-e", "--examples", type=int, default=None, help="number of training examples")
     args = parser.parse_args()
     args.dimensions = parse_dims(args)
     args.iterations = parse_iter(args)
@@ -87,11 +88,11 @@ def main():
         elif args.filename == 'CIFAR_data.mat':
             data = np.float32(data.reshape(-1, 1, int(np.sqrt(data.shape[1])), int(np.sqrt(data.shape[1]))))
             data = scaling.LCNinput(data, kernel_shape=5)
-            data = data[0:1000, :, :, :]
+            data = data[0:args.examples, :, :, :]
 
         elif args.filename == 'STL_10.mat':
             data = np.float32(data.reshape(-1, 3, int(np.sqrt(data.shape[1] / 3)), int(np.sqrt(data.shape[1] / 3))))
-            data = data[0:100, :, :, :]
+            data = data[0:args.examples, :, :, :]
             for channel in range(data.shape[1]):
                 data[:, channel, :, :] = np.reshape(scaling.LCNinput(data[:, channel, :, :].
                                                                      reshape((data.shape[0], 1,
@@ -146,12 +147,40 @@ def main():
     elapsed = time.time() - t
     print('Elapsed training time: %f' % elapsed)
 
+    # create sub-folder for saved model
+    directory_format = "./saved/%4d-%02d-%02d_%02dh%02dm%02ds"
+    directory_name = directory_format % time.localtime()[0:6]
+    os.mkdir(directory_name)
+
     # save the model for later use
-    pickle.dump(model, open('saved/model.pkl', 'w'), pickle.HIGHEST_PROTOCOL)
+    pickle.dump(model, open(directory_name + '/model.pkl', 'w'), pickle.HIGHEST_PROTOCOL)
+
+    # create log file
+    log_file = open(directory_name + "/log.txt", "wb")
+    for m in range(len(args.model)):
+        log_file.write(
+            "Model layer %d: \n model:%s \n dimensions:%4s \n iterations:%3d \n" % (m,
+                                                                                    args.model[m],
+                                                                                    args.dimensions[m],
+                                                                                    args.iterations[m])
+        )
+        if args.model == 'GroupSF' or args.model == 'GroupConvolutionalSF':
+            log_file.write(
+                " Groups: %d \n Step: %d" % (args.group, args.step)
+            )
+        ex = data.shape[0]
+        if args.examples is not None:
+            ex = args.examples
+
+    log_file.write(
+        " Data-set: %s \n Examples: %6d \n Whitened: %s" % (args.filename, ex, args.whitening)
+    )
+    log_file.write('\nElapsed training time: %f' % elapsed)
+    log_file.close()
 
     ''' =============================== Verbosity Options ===================================== '''
 
-    # display figures
+    # get variables and saves
     if args.verbosity == 1:
 
         # get variables of interest
@@ -172,6 +201,14 @@ def main():
             reconstruction['layer' + str(l)] = err
             error_recon['layer' + str(l)] = rec
             pooled['layer' + str(l)] = p
+
+        # save model as well as weights and activations separately
+        savemat(directory_name + '/weights.mat', weights)
+        savemat(directory_name + '/activations_norm.mat', activations_norm)
+        savemat(directory_name + '/activation_raw.mat', activations_raw)
+
+    # display figures
+    if args.verbosity == 2:
 
         # if GD, plot the cost function over time
         if args.opt == 'GD':
@@ -235,11 +272,6 @@ def main():
             visualize.visualize_convolved_image(temp, dim=dim / 2)
             # print temp
 
-        # save model as well as weights and activations separately
-        savemat('saved/weights.mat', weights)
-        savemat('saved/activations_norm.mat', activations_norm)
-        savemat('saved/activation_raw.mat', activations_raw)
-
     ''' ================================ Test the Model ======================================= '''
 
     # test the model if evaluating classification performance
@@ -259,30 +291,55 @@ def main():
             test_data = np.float32(test_data.reshape(-1, 1, int(np.sqrt(test_data.shape[1])),
                                                      int(np.sqrt(test_data.shape[1]))))
             test_data = scaling.LCNinput(test_data, kernel_shape=5)
-            test_data = test_data[0:1000, :, :, :]
+            test_data = test_data[0:args.examples, :, :, :]
 
-        # get the output of the last layer in the model given the training / test data and then reshape
-        # TODO: use raw output as training and testing data?
-        test_data = test[model.n_layers - 1](test_data)
-        test_data = test_data[0].reshape(test_data[0].shape[0], test_data[0].shape[1] *
-                                         test_data[0].shape[2] * test_data[0].shape[3])
+        # get SVM test results for pixels to last layer
+        train_input = None
+        for layer in range(model.n_layers + 1):
 
-        train_data = activations_norm['layer' + str(model.n_layers - 1)]
-        train_data = train_data.reshape(train_data.shape[0], train_data.shape[1] *
-                                        train_data.shape[2] * train_data.shape[3])
+            # pixel inputs
+            if layer == 0:
 
-        # train linear support vector machine
-        clf = svm.SVC(kernel="linear").fit(train_data, np.ravel(train_labels[0:1000]))
+                test_input = test_data.reshape(test_data.shape[0], test_data.shape[1] *
+                                               test_data.shape[2] * test_data.shape[3])
 
-        # get predictions from SVM and calculate accuracy
-        predictions = clf.predict(test_data)
-        accuracy = clf.score(test_data, test_labels[0:1000])
+                train_input = data.reshape(data.shape[0], data.shape[1] *
+                                           data.shape[2] * data.shape[3])
 
-        # display results
-        print("Accuracy of the classifier: %0.4f" % accuracy)
-        cm = confusion_matrix(test_labels[0:1000], predictions)
+            # hidden layers
+            elif layer > 0:
+
+                # get the output of the current layer in the model given the training / test data and then reshape
+                # TODO: use raw output as training and testing data?
+                test_input = test[layer - 1](test_data)
+                test_input = test_input[0].reshape(test_input[0].shape[0], test_input[0].shape[1] *
+                                                   test_input[0].shape[2] * test_input[0].shape[3])
+
+                train_input = activations_norm['layer' + str(layer - 1)]
+                train_input = train_input.reshape(train_input.shape[0], train_input.shape[1] *
+                                                  train_input.shape[2] * train_input.shape[3])
+
+            # train linear support vector machine
+            clf = svm.SVC(kernel="linear").fit(train_input, np.ravel(train_labels[0:args.examples]))
+
+            # get predictions from SVM and calculate accuracy
+            predictions = clf.predict(test_input)
+            accuracy = clf.score(test_input, test_labels[0:args.examples])
+
+            # display results and log them
+            print("Accuracy of the classifier at layer %1d: %0.4f" % (layer, accuracy))
+            cm = confusion_matrix(test_labels[0:args.examples], predictions)
+            log_file = open(directory_name + "/log.txt", "a")
+            log_file.write(
+                "\nAccuracy of the classifier at layer %1d: %0.4f" % (layer, accuracy)
+            )
+            log_file.close()
+
+    # visualize the confusion matrix
+    if args.test == 'y' and args.verbosity == 2:
 
         import pylab as pl
+
         pl.imshow(cm, interpolation='nearest')
         pl.title('Confusion Matrix for Network')
         pl.colorbar()
