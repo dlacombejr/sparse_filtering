@@ -2,4 +2,4 @@
 
 # automatically update remote github repo
 
-git pull https://github.com/dlacombe2013/convDSF
+git pull https://github.com/dlacombejr/sparse_filtering

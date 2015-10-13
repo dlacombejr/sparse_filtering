@@ -3,8 +3,11 @@
 1. Install Git and pull SF repository
 
 	    sudo apt-get --assume-yes install git
+	    mkdir sparse_filtering
+	    cd sparse_filtering
 	    git init
-	    git pull https://github.com/dlacombe2013/convDSF
+	    git pull https://github.com/dlacombejr/sparse_filtering
+	    cd ..
 
 2. Install first set of dependencies
 
