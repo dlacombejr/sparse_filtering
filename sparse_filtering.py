@@ -206,7 +206,7 @@ class ConvolutionalSF(SparseFilter):
         # return max_pool_2d(self.feed_forward(), ds=(2, 2))
         # return max_pool_2d(self.dot(), ds=(2, 2))  # returning non-normalized activations
         rectified = t.maximum(0, self.dot())
-        return max_pool_2d(rectified, ds=(2, 2))  # returning non-normalized activations
+        return max_pool_2d(rectified, ds=(2, 2), ignore_border=True)  # returning non-normalized activations
 
 
 class GroupSF(SparseFilter):

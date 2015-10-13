@@ -33,7 +33,8 @@ def main():
             $ python test.py
             $ python test.py -m GroupSF -v 1 -g 3 -s 1
             $ python test.py -m ConvolutionalSF -d 16 1 8 8 -v 1 -w y -c y -f CIFAR_data.mat -i 100
-            $ python test.py -m ConvolutionalSF -d 16 1 6 6 16 1 4 4 -w y -c y -f CIFAR_data.mat -i 100 150 -t y -v 1
+            $ python test.py -m ConvolutionalSF ConvolutionalSF -d 16 1 6 6 16 16 4 4 -w y -c y -f CIFAR_data.mat
+              -i 100 150 -t y -v 1
 
         In the convolutional case, the extra "1" is added automatically for broadcasting.
         -------------------------------------------------------------------------------------------------------------
