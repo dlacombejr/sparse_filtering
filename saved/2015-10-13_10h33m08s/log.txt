@@ -1,0 +1,10 @@
+Model layer 0: 
+ model:ConvolutionalSF 
+ dimensions:[16, 1, 6, 6] 
+ iterations:  1 
+ Data-set: CIFAR_data.mat 
+ Examples:    100 
+ Whitened: y
+Elapsed training time: 0.113126
+Accuracy of the classifier at layer 0: 0.0900
+Accuracy of the classifier at layer 1: 0.0600
