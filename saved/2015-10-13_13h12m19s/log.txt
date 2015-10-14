@@ -1,8 +1,0 @@
-Model layer 0: 
- model:SparseFilter 
- dimensions:[100, 256] 
- iterations:100 
- Data-set: patches.mat 
- Examples:    256 
- Whitened: n
-Elapsed training time: 38.561039
