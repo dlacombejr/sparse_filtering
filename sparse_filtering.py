@@ -72,9 +72,9 @@ def convolutional_norm(f):
     """ across image space """
     # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
     fs = f
-    l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
+    l2fs = t.sqrt(t.sum(t.sqr(fs), axis=0))           # l2 norm of example dimension
     nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-    l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1, 2, 3]))  # axis=1))
+    l2fn = t.sqrt(t.sum(t.sqr(nfs), axis=[1, 2, 3]))  # axis=1))
     #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
     f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
 
