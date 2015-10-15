@@ -56,16 +56,19 @@ def main():
     parser.add_argument("-t", "--test", default='n', help="test classification performance: 'y' or 'n")
     parser.add_argument("-a", "--channels", type=int, default=1, help="number of channels in data")
     parser.add_argument("-e", "--examples", type=int, default=None, help="number of training examples")
+    parser.add_argument("-b", "--batch_size", type=int, default=1000, help="number of examples in [mini]batch")
     args = parser.parse_args()
     args.dimensions = parse_dims(args)
     args.iterations = parse_iter(args)
 
     ''' =================================== Load in the data =================================== '''
 
+    # load in data
     base_path = os.path.dirname(__file__)
     file_path = os.path.join(base_path, "data", args.filename)
     data = loadmat(file_path)['X']
 
+    # reshape and preprocess data
     video = None
     if args.filename == 'patches_video.mat':
         video = data
@@ -78,7 +81,8 @@ def main():
         elif args.whitening == 'n' and args.channels == 1:
             data -= data.mean(axis=0)
         # elif args.whitening == 'n' and args.channels == 3:
-        data = np.float32(data)
+        # data = np.float32(data)
+        data = np.float32(data.T)
 
     elif args.convolution == 'y':
 
@@ -94,7 +98,8 @@ def main():
         elif args.filename == 'STL_10.mat':
             data = np.float32(data.reshape(-1, 3, int(np.sqrt(data.shape[1] / 3)), int(np.sqrt(data.shape[1] / 3))))
             data = data[0:args.examples, :, :, :]
-            for channel in range(data.shape[1]):
+            channels = data.shape[1]
+            for channel in range(channels):
                 data[:, channel, :, :] = np.reshape(scaling.LCNinput(data[:, channel, :, :].
                                                                      reshape((data.shape[0], 1,
                                                                               data.shape[2],
@@ -104,11 +109,17 @@ def main():
                                                     data.shape[2],
                                                     data.shape[3]))
 
+    # assert that batch size is valid and get number of batches
+    n_batches, rem = divmod(data.shape[0], args.batch_size)
+    assert rem == 0
+
     ''' ============================= Build and train the network ============================= '''
 
     # construct the network
-    model = sf.Network(model_type=args.model, weight_dims=args.dimensions, p=args.pool, group_size=args.group,
-                       step=args.step, lr=0.01, opt=args.opt, c=args.convolution, test=args.test)
+    model = sf.Network(
+        model_type=args.model, weight_dims=args.dimensions, p=args.pool, group_size=args.group,
+        step=args.step, lr=0.01, opt=args.opt, c=args.convolution, test=args.test, batch_size=args.batch_size
+    )
 
     # compile the training, output, and test functions for the network
     train, outputs, test = model.training_functions(data)
@@ -124,10 +135,14 @@ def main():
 
         # iterate over training epochs
         if args.opt == 'GD':
-            for i in range(args.iterations[l]):
-                c, w = train[l]()
-                cost_layer.append(c)
-                print("Layer %i cost at iteration %i: %f" % (l + 1, i, c))
+            for epoch in xrange(args.iterations[l]):
+
+                # go though [mini]batches
+                for batch_index in xrange(n_batches):
+
+                    c, w = train[l](index=batch_index)
+                    cost_layer.append(c)
+                    print("Layer %i cost at epoch %i and batch %i: %f" % (l + 1, epoch, batch_index, c))
 
         elif args.opt == 'L-BFGS':
             w = minimize(train[l], model.layers[l].w.eval().flatten(),
@@ -182,7 +197,7 @@ def main():
     ''' =============================== Verbosity Options ===================================== '''
 
     # get variables and saves
-    if args.verbosity == 1:
+    if args.verbosity >= 1:
 
         # get variables of interest
         activations_norm = {}
@@ -194,7 +209,8 @@ def main():
 
         for l in xrange(len(args.dimensions)):
 
-            f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
+            # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
+            f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:5000])
 
             activations_norm['layer' + str(l)] = f_hat
             activations_raw['layer' + str(l)] = f
@@ -250,7 +266,7 @@ def main():
         # additional visualizations for convolutional network
         if args.convolution == 'y':
 
-            dim = 28
+            dim = activations_raw['layer0'].shape[2]
 
             # visualize an example of a convolved image
             visualize.visualize_convolved_image(activations_raw['layer0'], dim=dim)

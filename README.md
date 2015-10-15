@@ -22,3 +22,9 @@ This repository contains modules for building many different types of sparse fil
 
 * `utilities`
 	Contains all of the various utilities. 
+
+---
+
+For emptying the saved folder:
+
+	rm -rfv saved/*

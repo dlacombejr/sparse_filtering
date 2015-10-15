@@ -39,7 +39,7 @@ def plotCost(cost):
     pl.show()
     
 
-def drawplots(W, color='jet', convolution='n', pad=0, examples=100, channels=None):
+def drawplots(W, color='jet', convolution='n', pad=0, examples=100, channels=1):
     
     '''
     Displays data (e.g., neuron weights) in a grid of squares   
@@ -61,16 +61,15 @@ def drawplots(W, color='jet', convolution='n', pad=0, examples=100, channels=Non
     plot_size = None
     if convolution == 'n' or convolution == 'y' and examples is not None:
         plot_size = np.sqrt(W.shape[1])
-        if channels is None:
-            channels = 1
+        if channels == 1:
             patch_size = np.sqrt(W.shape[0])
         elif channels == 3:
             patch_size = np.sqrt(W.shape[0] / channels)
     elif convolution == 'y' and examples is None:
         patch_size = np.asarray(W.shape[0])
         plot_size = np.sqrt(W.shape[3])
-        if channels is None or channels == 1:
-            channels = W.shape[2]
+        channels = W.shape[2]
+        if channels == 3:
             color = None
 
     # initialize images as ones based on parameters defined above

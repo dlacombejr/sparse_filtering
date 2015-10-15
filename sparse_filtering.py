@@ -35,9 +35,8 @@ def norm(f):
         The row and column normalized matrix of activation.
     """
     # TODO: consider half-wave rectification before sparse filtering
-    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
-    # fs = t.maximum(1e-8, f)                      # linear rectification
-    fs = f
+    fs = t.sqrt(t.sqr(f) + 1e-8)                    # ensure numerical stability
+    # fs = t.maximum(1e-8, f)                       # linear rectification
     l2fs = t.sqrt(t.sum(fs ** 2, axis=1))           # l2 norm of row
     nfs = fs / l2fs.dimshuffle(0, 'x')              # normalize rows
     l2fn = t.sqrt(t.sum(nfs ** 2, axis=0))          # l2 norm of column
@@ -120,7 +119,8 @@ class SparseFilter(object):
         
         """ Returns dot product of weights and input data """
         
-        f = t.dot(self.w, self.x)
+        # f = t.dot(self.w, self.x)
+        f = t.dot(self.w, self.x.T)
         
         return f
         
@@ -145,7 +145,7 @@ class SparseFilter(object):
         # activation = self.dot()
         activation = t.maximum(0, self.dot())
         reconstruction = t.dot(self.w.T, activation)
-        error = t.sum(t.abs_(self.x - reconstruction))
+        error = t.sum(t.abs_(self.x - reconstruction.T))
         
         return reconstruction, error
    
@@ -514,7 +514,7 @@ class Network(object):
     """ Neural network architecture """
     
     def __init__(self, model_type='SparseFilter', weight_dims=([100, 256], []), p=None,
-                 group_size=None, step=None, lr=0.01, opt='GD', c='n', test='n'):
+                 group_size=None, step=None, lr=0.01, opt='GD', c='n', test='n', batch_size=1000):
         
         """
         Neural network constructor. Defines a network architecture that builds 
@@ -550,13 +550,17 @@ class Network(object):
         self.weight_dims = weight_dims
         self.c = c
         self.test = test
+        self.batch_size = batch_size
+
+        # make assertions
+        assert self.n_layers > 0
         
         # define symbolic variable for input data based on network type
         if self.c == 'n': 
-            self.x = t.fmatrix()
+            self.x = t.fmatrix('x')
         elif self.c == 'y': 
-            self.x = t.ftensor4()
-        
+            self.x = t.ftensor4('x')
+
         # for each layer, create a layer object
         for l in xrange(self.n_layers):
             
@@ -598,12 +602,19 @@ class Network(object):
         out_fns : list
             List of compiled theano functions for retrieving important variables.
         """
-        
+
+        # index to a [mini]batch
+        index = t.lscalar('index')
+
+        # define beginning and end of a batch given 'index'
+        batch_begin = index * self.batch_size
+        batch_end = batch_begin + self.batch_size
+
         # initialize empty function lists
         train_fns = []
         out_fns = []
         test_fn = []
-        
+
         # for each layer define a training, output, and test function
         for l in self.layers:
 
@@ -625,8 +636,21 @@ class Network(object):
             # get training function
             if self.opt == 'GD':
 
-                fn = theano.function([], outputs=[cost, w], updates=updates,
-                                     givens={self.x: data}, on_unused_input='ignore')
+                # make data a shared theano variable
+                data = theano.shared(data)
+
+                # fn = theano.function([], outputs=[cost, w], updates=updates,
+                #                      givens={self.x: data}, on_unused_input='ignore')
+
+                fn = theano.function(
+                    inputs=[index],
+                    outputs=[cost, w],
+                    updates=updates,
+                    givens={
+                        self.x: data[batch_begin:batch_end]
+                    },
+                    on_unused_input='ignore'
+                )
 
                 train_fns.append(fn)
 
@@ -682,12 +706,17 @@ class Network(object):
                 train_fns.append(train_fn)
 
             # get output function
+            # if self.c == 'y':
+            #     out = theano.function([], outputs=[f_hat, rec, err, f_hat_shuffled, f, pooled],
+            #                           givens={self.x: data})
+            # else:
+            #     out = theano.function([], outputs=[f_hat, rec, err, f, f, f],
+            #                           givens={self.x: data})  # TODO: create better output
+
             if self.c == 'y':
-                out = theano.function([], outputs=[f_hat, rec, err, f_hat_shuffled, f, pooled],
-                                      givens={self.x: data})
+                out = theano.function([self.x], outputs=[f_hat, rec, err, f_hat_shuffled, f, pooled])
             else:
-                out = theano.function([], outputs=[f_hat, rec, err, f, f, f],
-                                      givens={self.x: data})  # TODO: create better output
+                out = theano.function([self.x], outputs=[f_hat, rec, err, f, f, f])  # TODO: create better output
 
             # TODO: create test function with test data as input
             out_fns.append(out)
