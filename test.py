@@ -210,7 +210,7 @@ def main():
         for l in xrange(len(args.dimensions)):
 
             # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
-            f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:5000])
+            f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:args.batch_size])
 
             activations_norm['layer' + str(l)] = f_hat
             activations_raw['layer' + str(l)] = f
@@ -328,7 +328,7 @@ def main():
 
                 # get the output of the current layer in the model given the training / test data and then reshape
                 # TODO: use raw output as training and testing data?
-                test_input = test[layer - 1](test_data)
+                test_input = test[layer - 1](test_data[0:args.batch_size])
                 test_input = test_input[0].reshape(test_input[0].shape[0], test_input[0].shape[1] *
                                                    test_input[0].shape[2] * test_input[0].shape[3])
 
