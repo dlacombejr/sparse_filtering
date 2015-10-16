@@ -221,8 +221,8 @@ def main():
 
         # save model as well as weights and activations separately
         savemat(directory_name + '/weights.mat', weights)
-        # savemat(directory_name + '/activations_norm.mat', activations_norm)
-        # savemat(directory_name + '/activation_raw.mat', activations_raw)
+        savemat(directory_name + '/activations_norm.mat', activations_norm)
+        savemat(directory_name + '/activation_raw.mat', activations_raw)
 
     # display figures
     if args.verbosity == 2:
