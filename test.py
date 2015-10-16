@@ -249,9 +249,12 @@ def main():
                 pooled['layer' + str(l) + '_batch' + str(batch)] = p
 
                 # save model as well as weights and activations separately
-                savemat(directory_name + '/weights.mat', weights)
-                savemat(directory_name + '/activations_norm.mat', activations_norm)
-                savemat(directory_name + '/activation_raw.mat', activations_raw)
+                savemat(directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' +
+                        str(batch) + '.mat', activations_norm)
+                savemat(directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' +
+                        str(batch) + '.mat', activations_raw)
+
+        savemat(directory_name + '/weights.mat', weights)
 
         #     # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
         #     f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:args.batch_size])
