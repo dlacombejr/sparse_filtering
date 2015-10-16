@@ -53,10 +53,11 @@ def main():
     parser.add_argument("-v", "--verbosity", type=int, default=0, help="verbosity: 0 no plot; 1 plots")
     parser.add_argument("-o", "--opt", default="GD", help="optimization method: GD or L-BFGS")
     parser.add_argument("-w", "--whitening", default='n', help="whitening: 'y' or 'n'")
-    parser.add_argument("-t", "--test", default='n', help="test classification performance: 'y' or 'n")
+    parser.add_argument("-t", "--test", default='n', help="test classification performance: 'y' or 'n'")
     parser.add_argument("-a", "--channels", type=int, default=1, help="number of channels in data")
     parser.add_argument("-e", "--examples", type=int, default=None, help="number of training examples")
     parser.add_argument("-b", "--batch_size", type=int, default=1000, help="number of examples in [mini]batch")
+    parser.add_argument("-z", "--aws", default='n', help="run on aws: 'y' or 'n'")
     args = parser.parse_args()
     args.dimensions = parse_dims(args)
     args.iterations = parse_iter(args)
@@ -167,7 +168,10 @@ def main():
     print('Elapsed training time: %f' % elapsed)
 
     # create sub-folder for saved model
-    directory_format = "./saved/%4d-%02d-%02d_%02dh%02dm%02ds"
+    if args.aws == 'n':
+        directory_format = "./saved/%4d-%02d-%02d_%02dh%02dm%02ds"
+    elif args.aws == 'y':
+        directory_format = "/mnt/saved/%4d-%02d-%02d_%02dh%02dm%02ds"
     directory_name = directory_format % time.localtime()[0:6]
     os.mkdir(directory_name)
 
@@ -210,7 +214,7 @@ def main():
         # error_recon = {}
         # pooled = {}
 
-        for l in xrange(len(args.dimensions)):
+        # for l in xrange(len(args.dimensions)):
 
             # activations_norm['layer' + str(l)] = {}
             # activations_raw['layer' + str(l)] = {}
@@ -219,40 +223,40 @@ def main():
             # error_recon['layer' + str(l)] = {}
             # pooled['layer' + str(l)] = {}
 
-            for batch in xrange(n_batches):
+        for batch in xrange(n_batches):
 
-                # get variables of interest
-                activations_norm = {}
-                activations_raw = {}
-                activations_shuffled = {}
-                reconstruction = {}
-                error_recon = {}
-                pooled = {}
+            # get variables of interest
+            activations_norm = {}
+            activations_raw = {}
+            activations_shuffled = {}
+            reconstruction = {}
+            error_recon = {}
+            pooled = {}
 
-                # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
-                begin = batch * args.batch_size
-                end = begin + args.batch_size
-                f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[begin:end])
+            # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
+            begin = batch * args.batch_size
+            end = begin + args.batch_size
+            f_hat, rec, err, f_hat_shuffled, f, p = outputs[model.n_layers - 1](data[begin:end])
 
-                # activations_norm['layer' + str(l)]['batch' + str(batch)] = f_hat
-                # activations_raw['layer' + str(l)]['batch' + str(batch)] = f
-                # activations_shuffled['layer' + str(l)]['batch' + str(batch)] = f_hat_shuffled
-                # reconstruction['layer' + str(l)]['batch' + str(batch)] = err
-                # error_recon['layer' + str(l)]['batch' + str(batch)] = rec
-                # pooled['layer' + str(l)]['batch' + str(batch)] = p
+            # activations_norm['layer' + str(l)]['batch' + str(batch)] = f_hat
+            # activations_raw['layer' + str(l)]['batch' + str(batch)] = f
+            # activations_shuffled['layer' + str(l)]['batch' + str(batch)] = f_hat_shuffled
+            # reconstruction['layer' + str(l)]['batch' + str(batch)] = err
+            # error_recon['layer' + str(l)]['batch' + str(batch)] = rec
+            # pooled['layer' + str(l)]['batch' + str(batch)] = p
 
-                activations_norm['layer' + str(l) + '_batch' + str(batch)] = f_hat
-                activations_raw['layer' + str(l) + '_batch' + str(batch)] = f
-                activations_shuffled['layer' + str(l) + '_batch' + str(batch)] = f_hat_shuffled
-                reconstruction['layer' + str(l) + '_batch' + str(batch)] = err
-                error_recon['layer' + str(l) + '_batch' + str(batch)] = rec
-                pooled['layer' + str(l) + '_batch' + str(batch)] = p
+            activations_norm['layer' + str(l) + '_batch' + str(batch)] = f_hat
+            activations_raw['layer' + str(l) + '_batch' + str(batch)] = f
+            activations_shuffled['layer' + str(l) + '_batch' + str(batch)] = f_hat_shuffled
+            reconstruction['layer' + str(l) + '_batch' + str(batch)] = err
+            error_recon['layer' + str(l) + '_batch' + str(batch)] = rec
+            pooled['layer' + str(l) + '_batch' + str(batch)] = p
 
-                # save model as well as weights and activations separately
-                savemat(directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' +
-                        str(batch) + '.mat', activations_norm)
-                savemat(directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' +
-                        str(batch) + '.mat', activations_raw)
+            # save model as well as weights and activations separately
+            savemat(directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' +
+                    str(batch) + '.mat', activations_norm)
+            savemat(directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' +
+                    str(batch) + '.mat', activations_raw)
 
         savemat(directory_name + '/weights.mat', weights)
 
