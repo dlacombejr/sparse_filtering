@@ -202,42 +202,56 @@ def main():
     # get variables and saves
     if args.verbosity >= 1:
 
-        # get variables of interest
-        activations_norm = {}
-        activations_raw = {}
-        activations_shuffled = {}
-        reconstruction = {}
-        error_recon = {}
-        pooled = {}
+        # # get variables of interest
+        # activations_norm = {}
+        # activations_raw = {}
+        # activations_shuffled = {}
+        # reconstruction = {}
+        # error_recon = {}
+        # pooled = {}
 
         for l in xrange(len(args.dimensions)):
 
-            activations_norm['layer' + str(l)] = {}
-            activations_raw['layer' + str(l)] = {}
-            activations_shuffled['layer' + str(l)] = {}
-            reconstruction['layer' + str(l)] = {}
-            error_recon['layer' + str(l)] = {}
-            pooled['layer' + str(l)] = {}
+            # activations_norm['layer' + str(l)] = {}
+            # activations_raw['layer' + str(l)] = {}
+            # activations_shuffled['layer' + str(l)] = {}
+            # reconstruction['layer' + str(l)] = {}
+            # error_recon['layer' + str(l)] = {}
+            # pooled['layer' + str(l)] = {}
 
             for batch in xrange(n_batches):
+
+                # get variables of interest
+                activations_norm = {}
+                activations_raw = {}
+                activations_shuffled = {}
+                reconstruction = {}
+                error_recon = {}
+                pooled = {}
 
                 # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
                 begin = batch * args.batch_size
                 end = begin + args.batch_size
                 f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[begin:end])
 
-                activations_norm['layer' + str(l)]['batch' + str(batch)] = f_hat
-                activations_raw['layer' + str(l)]['batch' + str(batch)] = f
-                activations_shuffled['layer' + str(l)]['batch' + str(batch)] = f_hat_shuffled
-                reconstruction['layer' + str(l)]['batch' + str(batch)] = err
-                error_recon['layer' + str(l)]['batch' + str(batch)] = rec
-                pooled['layer' + str(l)]['batch' + str(batch)] = p
+                # activations_norm['layer' + str(l)]['batch' + str(batch)] = f_hat
+                # activations_raw['layer' + str(l)]['batch' + str(batch)] = f
+                # activations_shuffled['layer' + str(l)]['batch' + str(batch)] = f_hat_shuffled
+                # reconstruction['layer' + str(l)]['batch' + str(batch)] = err
+                # error_recon['layer' + str(l)]['batch' + str(batch)] = rec
+                # pooled['layer' + str(l)]['batch' + str(batch)] = p
 
-        # save model as well as weights and activations separately
-        savemat(directory_name + '/weights.mat', weights)
-        savemat(directory_name + '/activations_norm.mat', activations_norm)
-        savemat(directory_name + '/activation_raw.mat', activations_raw)
+                activations_norm['layer' + str(l) + '_batch' + str(batch)] = f_hat
+                activations_raw['layer' + str(l) + '_batch' + str(batch)] = f
+                activations_shuffled['layer' + str(l) + '_batch' + str(batch)] = f_hat_shuffled
+                reconstruction['layer' + str(l) + '_batch' + str(batch)] = err
+                error_recon['layer' + str(l) + '_batch' + str(batch)] = rec
+                pooled['layer' + str(l) + '_batch' + str(batch)] = p
 
+                # save model as well as weights and activations separately
+                savemat(directory_name + '/weights.mat', weights)
+                savemat(directory_name + '/activations_norm.mat', activations_norm)
+                savemat(directory_name + '/activation_raw.mat', activations_raw)
 
         #     # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
         #     f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:args.batch_size])
