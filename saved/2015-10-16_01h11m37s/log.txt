@@ -1,0 +1,12 @@
+Model layer 0: 
+ model:ConvolutionalSF 
+ dimensions:[16, 1, 5, 5] 
+ iterations:  5 
+Model layer 1: 
+ model:ConvolutionalSF 
+ dimensions:[36, 16, 5, 5] 
+ iterations: 15 
+ Data-set: CIFAR_data.mat 
+ Examples:  50000 
+ Whitened: n
+Elapsed training time: 79.109401
