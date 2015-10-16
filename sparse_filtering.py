@@ -615,6 +615,9 @@ class Network(object):
         out_fns = []
         test_fn = []
 
+        # make data a shared theano variable
+        data = theano.shared(data)
+
         # for each layer define a training, output, and test function
         for l in self.layers:
 
@@ -635,9 +638,6 @@ class Network(object):
 
             # get training function
             if self.opt == 'GD':
-
-                # make data a shared theano variable
-                data = theano.shared(data)
 
                 # fn = theano.function([], outputs=[cost, w], updates=updates,
                 #                      givens={self.x: data}, on_unused_input='ignore')

@@ -28,3 +28,7 @@ This repository contains modules for building many different types of sparse fil
 For emptying the saved folder:
 
 	rm -rfv saved/*
+
+For stopping run-away code:
+
+	pkill -9 python
