@@ -113,6 +113,9 @@ def main():
     n_batches, rem = divmod(data.shape[0], args.batch_size)
     assert rem == 0
 
+    # other assertions
+    assert len(args.model) == len(args.iterations)
+
     ''' ============================= Build and train the network ============================= '''
 
     # construct the network
@@ -209,20 +212,47 @@ def main():
 
         for l in xrange(len(args.dimensions)):
 
-            # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
-            f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:args.batch_size])
+            activations_norm['layer' + str(l)] = {}
+            activations_raw['layer' + str(l)] = {}
+            activations_shuffled['layer' + str(l)] = {}
+            reconstruction['layer' + str(l)] = {}
+            error_recon['layer' + str(l)] = {}
+            pooled['layer' + str(l)] = {}
 
-            activations_norm['layer' + str(l)] = f_hat
-            activations_raw['layer' + str(l)] = f
-            activations_shuffled['layer' + str(l)] = f_hat_shuffled
-            reconstruction['layer' + str(l)] = err
-            error_recon['layer' + str(l)] = rec
-            pooled['layer' + str(l)] = p
+            for batch in xrange(n_batches):
+
+                # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
+                begin = batch * args.batch_size
+                end = begin + args.batch_size
+                f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[begin:end])
+
+                activations_norm['layer' + str(l)]['batch' + str(batch)] = f_hat
+                activations_raw['layer' + str(l)]['batch' + str(batch)] = f
+                activations_shuffled['layer' + str(l)]['batch' + str(batch)] = f_hat_shuffled
+                reconstruction['layer' + str(l)]['batch' + str(batch)] = err
+                error_recon['layer' + str(l)]['batch' + str(batch)] = rec
+                pooled['layer' + str(l)]['batch' + str(batch)] = p
 
         # save model as well as weights and activations separately
         savemat(directory_name + '/weights.mat', weights)
         savemat(directory_name + '/activations_norm.mat', activations_norm)
         savemat(directory_name + '/activation_raw.mat', activations_raw)
+
+
+        #     # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
+        #     f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:args.batch_size])
+        #
+        #     activations_norm['layer' + str(l)] = f_hat
+        #     activations_raw['layer' + str(l)] = f
+        #     activations_shuffled['layer' + str(l)] = f_hat_shuffled
+        #     reconstruction['layer' + str(l)] = err
+        #     error_recon['layer' + str(l)] = rec
+        #     pooled['layer' + str(l)] = p
+        #
+        # # save model as well as weights and activations separately
+        # savemat(directory_name + '/weights.mat', weights)
+        # savemat(directory_name + '/activations_norm.mat', activations_norm)
+        # savemat(directory_name + '/activation_raw.mat', activations_raw)
 
     # display figures
     if args.verbosity == 2:
