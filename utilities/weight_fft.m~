@@ -1,0 +1,4 @@
+load weights.mat
+
+for neuron=1:10
+    

@@ -68,14 +68,14 @@ def convolutional_norm(f):
     # l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
     # f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
 
-    """ across image space """
-    fs = t.sqrt(t.sqr(f) + 1e-8)                      # ensure numerical stability
-    # fs = f
-    l2fs = t.sqrt(t.sum(t.sqr(fs), axis=0))           # l2 norm of example dimension
-    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-    l2fn = t.sqrt(t.sum(t.sqr(nfs), axis=[1, 2, 3]))  # axis=1))
-    #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
-    f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
+    # """ across image space """
+    # fs = t.sqrt(t.sqr(f) + 1e-8)                      # ensure numerical stability
+    # # fs = f
+    # l2fs = t.sqrt(t.sum(t.sqr(fs), axis=0))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    # l2fn = t.sqrt(t.sum(t.sqr(nfs), axis=[1, 2, 3]))  # axis=1))
+    # #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
+    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
 
     # """ new concept from TODO """
     # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
@@ -86,6 +86,73 @@ def convolutional_norm(f):
     # nfs_2 = nfs / l2fn.dimshuffle(0, 1, 'x', 'x')   # normalize across non-image dimensions
     #
     # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=1))       # l2 norm of neuron dimension
+    # f_hat = nfs_2 / l2fn.dimshuffle(0, 'x', 1, 2)  # normalize non-neuron dimensions
+
+    # """ across examples and image space """
+    # fs = t.sqrt(t.sqr(f) + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(t.sqr(fs), axis=[0, 2, 3]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 'x', 'x')        # normalize non-example dimensions
+    # l2fn = t.sqrt(t.sum(t.sqr(nfs), axis=[1]))  # axis=1))
+    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)           # 1, 2)     # normalize non-neuron dimensions
+
+##################
+
+
+    # """ new concept from TODO """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=[0, 2, 3]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 'x', 'x')        # normalize non-example dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1, 2, 3]))     # l2 norm of image space
+    # nfs_2 = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')   # normalize across non-image dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[2, 3]))       # l2 norm of neuron dimension
+    # f_hat = nfs_2 / l2fn.dimshuffle(0, 1, 'x', 'x')  # normalize non-neuron dimensions
+
+    # """ new concept from TODO """ *************
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=[0, 2, 3]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 'x', 'x')        # normalize non-example dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1]))     # l2 norm of image space
+    # nfs_2 = nfs / l2fn.dimshuffle(0, 'x', 1, 2)   # normalize across non-image dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[2, 3]))       # l2 norm of neuron dimension
+    # f_hat = nfs_2 / l2fn.dimshuffle(0, 1, 'x', 'x')  # normalize non-neuron dimensions
+
+    # """ new concept from TODO """
+    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    l2fs = t.sqrt(t.sum(fs ** 2, axis=[0]))           # l2 norm of example dimension
+    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+
+    l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1]))     # l2 norm of image space
+    nfs_2 = nfs / l2fn.dimshuffle(0, 'x', 1, 2)   # normalize across non-image dimensions
+
+    l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[2, 3]))       # l2 norm of neuron dimension
+    f_hat = nfs_2 / l2fn.dimshuffle(0, 1, 'x', 'x')  # normalize non-neuron dimensions
+
+
+
+    # """ new concept from TODO """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=[0, 2, 3]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 'x', 'x')        # normalize non-example dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[2, 3]))     # l2 norm of image space
+    # nfs_2 = nfs / l2fn.dimshuffle(0, 1, 'x', 'x')   # normalize across non-image dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[1, 2, 3]))       # l2 norm of neuron dimension
+    # f_hat = nfs_2 / l2fn.dimshuffle(0, 'x', 'x', 'x')  # normalize non-neuron dimensions
+
+    # """ new concept from TODO """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=[0, 2, 3]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 'x', 'x')        # normalize non-example dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[2, 3]))     # l2 norm of image space
+    # nfs_2 = nfs / l2fn.dimshuffle(0, 1, 'x', 'x')   # normalize across non-image dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[1]))       # l2 norm of neuron dimension
     # f_hat = nfs_2 / l2fn.dimshuffle(0, 'x', 1, 2)  # normalize non-neuron dimensions
 
     return f_hat
@@ -410,6 +477,7 @@ class Layer(object):
         self.c = c
         
         # build model based on model_type
+        self.model = None
         if model_type == 'SparseFilter':
             self.model = SparseFilter(self.w, self.x)
         elif model_type == 'ConvolutionalSF':
@@ -420,6 +488,7 @@ class Layer(object):
         elif model_type == 'GroupConvolutionalSF':
             self.g_mat = connections.gMatToroidal(self.weight_dims[0], group_size, step, centered='n')
             self.model = GroupConvolutionalSF(self.w, self.x, self.g_mat)
+        assert self.model is not None
         
     def feed_forward(self):
         

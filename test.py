@@ -48,7 +48,7 @@ def main():
     parser.add_argument("-p", "--pool", type=int, nargs='+', default=None, help="pooling dimensions")
     parser.add_argument("-g", "--group", type=int, default=None, help="group size")
     parser.add_argument("-s", "--step", type=int, default=None, help="step size")
-    parser.add_argument("-l", "--learn_rate", type=int, default=.01, help="learning rate")
+    parser.add_argument("-l", "--learn_rate", type=float, default=.001, help="learning rate")
     parser.add_argument("-i", "--iterations", type=int, nargs='+', default=[100], help="number of iterations")
     parser.add_argument("-v", "--verbosity", type=int, default=0, help="verbosity: 0 no plot; 1 plots")
     parser.add_argument("-o", "--opt", default="GD", help="optimization method: GD or L-BFGS")
@@ -96,11 +96,11 @@ def main():
             data = scaling.LCNinput(data, kernel_shape=5)
             data = data[0:args.examples, :, :, :]
 
-        elif args.filename == 'STL_10.mat':
+        elif args.filename == 'STL_10.mat' or args.filename == 'Lenna.mat':
             data = np.float32(data.reshape(-1, 3, int(np.sqrt(data.shape[1] / 3)), int(np.sqrt(data.shape[1] / 3))))
             data = data[0:args.examples, :, :, :]
-            channels = data.shape[1]
-            for channel in range(channels):
+            args.channels = data.shape[1]
+            for channel in range(args.channels):
                 data[:, channel, :, :] = np.reshape(scaling.LCNinput(data[:, channel, :, :].
                                                                      reshape((data.shape[0], 1,
                                                                               data.shape[2],
@@ -116,14 +116,17 @@ def main():
 
     # other assertions
     assert len(args.model) == len(args.iterations)
+    if args.model[0] == 'GroupSF' or args.model[0] == 'GroupConvolutionalSF':
+        assert args.group is not None
+        assert args.step is not None
 
     ''' ============================= Build and train the network ============================= '''
 
     # construct the network
     model = sf.Network(
         model_type=args.model, weight_dims=args.dimensions, p=args.pool, group_size=args.group,
-        step=args.step, lr=0.01, opt=args.opt, c=args.convolution, test=args.test, batch_size=args.batch_size
-    )
+        step=args.step, lr=args.learn_rate, opt=args.opt, c=args.convolution, test=args.test, batch_size=args.batch_size
+    )  # TODO: custom learning rates for each layer
 
     # compile the training, output, and test functions for the network
     train, outputs, test = model.training_functions(data)

@@ -32,3 +32,7 @@ For emptying the saved folder:
 For stopping run-away code:
 
 	pkill -9 python
+
+For pulling data from instance:
+
+	scp -i dan-key-pair-useast.pem ubuntu@ec2-52-91-225-232.compute-1.amazonaws.com:~/sparse_filtering/saved/2015-10-16_18h58m42s/* ~/Documents/research/AWS/sparse_filtering/saved/

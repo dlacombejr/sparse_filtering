@@ -1,0 +1,12 @@
+path = '~/Documents/research/AWS/sparse_filtering/saved/';
+addpath(genpath(path))
+
+fileNames = dir([path, '/activation_raw*.mat']);
+
+
+master = []; 
+for file = 1:numel(fileNames)
+    temp = load(fileNames(file).name);
+    temp = reshape(...
+        temp, [...
+            size(temp, 1), 

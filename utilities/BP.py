@@ -34,6 +34,8 @@ def RMSprop(cost, params, lr=0.001, rho=0.9, epsilon=1e-6):
     updates.append((acc, acc_new))
     updates.append((params, params - lr * grads))
     return updates
+
+    # TODO: should second-level weights be considered constant (i.e., not bp through)
     
     
 def censor_updates(updates):
