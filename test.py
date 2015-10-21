@@ -65,11 +65,13 @@ def main():
     ''' =================================== Load in the data =================================== '''
 
     # load in data
+    print "loading data..."
     base_path = os.path.dirname(__file__)
     file_path = os.path.join(base_path, "data", args.filename)
     data = loadmat(file_path)['X']
 
     # reshape and preprocess data
+    print "pre-processing data ..."
     video = None
     if args.filename == 'patches_video.mat':
         video = data
@@ -123,15 +125,18 @@ def main():
     ''' ============================= Build and train the network ============================= '''
 
     # construct the network
+    print "building model..."
     model = sf.Network(
         model_type=args.model, weight_dims=args.dimensions, p=args.pool, group_size=args.group,
         step=args.step, lr=args.learn_rate, opt=args.opt, c=args.convolution, test=args.test, batch_size=args.batch_size
     )  # TODO: custom learning rates for each layer
 
     # compile the training, output, and test functions for the network
+    print "compiling theano functions..."
     train, outputs, test = model.training_functions(data)
 
     # train the sparse filtering network
+    print "training network..."
     t = time.time()
     cost = {}
     weights = {}
@@ -174,7 +179,7 @@ def main():
     if args.aws == 'n':
         directory_format = "./saved/%4d-%02d-%02d_%02dh%02dm%02ds"
     elif args.aws == 'y':
-        directory_format = "/mnt/saved/%4d-%02d-%02d_%02dh%02dm%02ds"
+        directory_format = "/home/ubuntu/s3/saved/%4d-%02d-%02d_%02dh%02dm%02ds"
     directory_name = directory_format % time.localtime()[0:6]
     os.mkdir(directory_name)
 

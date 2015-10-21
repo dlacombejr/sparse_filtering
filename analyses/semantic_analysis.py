@@ -23,14 +23,14 @@ def main():
     class_specific_activations = np.zeros((classes, dimension, dimension))
 
     # fill activation matrix by looping over classes
-    for label in xrange(classes):
+    for label in xrange(len(classes)):
         class_data = data[train_labels == label, :, :]
         class_data = np.sum(class_data, axis=(0, 2))
         class_specific_activations[label, :, :] = \
             class_specific_activations[label, :, :] + class_data.reshape((dimension, dimension))
 
     # plot all of the class-specific matrices
-    for label in xrange(classes):
+    for label in xrange(len(classes)):
         pl.subplot(2, 5, label + 1)
         pl.imshow(
             class_specific_activations[label, :, :],
