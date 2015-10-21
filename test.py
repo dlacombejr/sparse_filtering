@@ -178,10 +178,12 @@ def main():
     # create sub-folder for saved model
     if args.aws == 'n':
         directory_format = "./saved/%4d-%02d-%02d_%02dh%02dm%02ds"
+        directory_name = directory_format % time.localtime()[0:6]
+        os.mkdir(directory_name)
     elif args.aws == 'y':
         directory_format = "/home/ubuntu/s3/saved/%4d-%02d-%02d_%02dh%02dm%02ds"
-    directory_name = directory_format % time.localtime()[0:6]
-    os.mkdir(directory_name)
+        directory_name = directory_format % time.localtime()[0:6]
+        os.system("sudo mkdir " + directory_name)
 
     # save the model for later use
     pickle.dump(model, open(directory_name + '/model.pkl', 'w'), pickle.HIGHEST_PROTOCOL)
