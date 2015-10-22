@@ -186,8 +186,8 @@ def main():
         # os.system("sudo mkdir " + directory_name)
         directory_name = "/home/ubuntu/s3/saved"
 
-    # save the model for later use
-    pickle.dump(model, open(directory_name + '/model.pkl', 'w'), pickle.HIGHEST_PROTOCOL)
+    # # save the model for later use
+    # pickle.dump(model, open(directory_name + '/model.pkl', 'w'), pickle.HIGHEST_PROTOCOL)
 
     # create log file
     log_file = open(directory_name + "/log.txt", "wb")
