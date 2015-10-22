@@ -223,7 +223,7 @@ def main():
     log_file.close()
     if args.aws == 'y':
         k.key = directory_name + "/log.txt"
-        k.set_contents_from_filename('log.txt')
+        k.set_contents_from_filename(directory_name + "/log.txt")
         os.remove(directory_name + "/log.txt")
 
 
@@ -289,7 +289,7 @@ def main():
                 k.key = directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' + \
                     str(batch) + '.mat'
                 k.set_contents_from_filename(
-                    'activations_norm_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
+                    directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
                 )
                 os.remove(
                     directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
@@ -298,7 +298,7 @@ def main():
                 k.key = directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + \
                     str(batch) + '.mat'
                 k.set_contents_from_filename(
-                    'activation_raw_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
+                    directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
                 )
                 os.remove(
                     directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
@@ -307,8 +307,8 @@ def main():
         savemat(directory_name + '/weights.mat', weights)
         if args.aws == 'y':
             k.key = directory_name + '/weights.mat'
-            k.set_contents_from_filename('weights.mat')
-            os.remove('weights.mat')
+            k.set_contents_from_filename(directory_name + '/weights.mat')
+            os.remove(directory_name + '/weights.mat')
 
         #     # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
         #     f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:args.batch_size])
