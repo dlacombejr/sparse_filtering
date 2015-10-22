@@ -189,6 +189,7 @@ def main():
         k = Key(bucket)
         directory_format = "/saved/%4d-%02d-%02d_%02dh%02dm%02ds"
         directory_name = directory_format % time.localtime()[0:6]
+        os.mkdir(directory_name)
 
     # save the model for later use
     full_path = directory_name + '/model.pkl'
