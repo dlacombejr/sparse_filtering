@@ -181,13 +181,22 @@ def main():
         directory_name = directory_format % time.localtime()[0:6]
         os.mkdir(directory_name)
     elif args.aws == 'y':
-        # directory_format = "/home/ubuntu/s3/saved/%4d-%02d-%02d_%02dh%02dm%02ds"
-        # directory_name = directory_format % time.localtime()[0:6]
-        # os.system("sudo mkdir " + directory_name)
-        directory_name = "/home/ubuntu/s3/saved"
+        import boto
+        from boto.s3.key import Key
+        s3 = boto.connect_s3()
+        my_bucket = 'danbuckettest'
+        bucket = s3.get_bucket(my_bucket)
+        k = Key(bucket)
+        directory_format = "/saved/%4d-%02d-%02d_%02dh%02dm%02ds"
+        directory_name = directory_format % time.localtime()[0:6]
 
-    # # save the model for later use
-    # pickle.dump(model, open(directory_name + '/model.pkl', 'w'), pickle.HIGHEST_PROTOCOL)
+    # save the model for later use
+    full_path = directory_name + '/model.pkl'
+    pickle.dump(model, open(full_path, 'w'), pickle.HIGHEST_PROTOCOL)
+    if args.aws == 'y':
+        k.key = full_path
+        k.set_contents_from_filename('model.pkl')
+        os.remove(full_path)
 
     # create log file
     log_file = open(directory_name + "/log.txt", "wb")
@@ -211,6 +220,11 @@ def main():
     )
     log_file.write('\nElapsed training time: %f' % elapsed)
     log_file.close()
+    if args.aws == 'y':
+        k.key = directory_name + "/log.txt"
+        k.set_contents_from_filename('log.txt')
+        os.remove(directory_name + "/log.txt")
+
 
     ''' =============================== Verbosity Options ===================================== '''
 
@@ -269,7 +283,31 @@ def main():
             savemat(directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' +
                     str(batch) + '.mat', activations_raw)
 
+            if args.aws == 'y':
+
+                k.key = directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' + \
+                    str(batch) + '.mat'
+                k.set_contents_from_filename(
+                    'activations_norm_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
+                )
+                os.remove(
+                    directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
+                )
+
+                k.key = directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + \
+                    str(batch) + '.mat'
+                k.set_contents_from_filename(
+                    'activation_raw_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
+                )
+                os.remove(
+                    directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
+                )
+
         savemat(directory_name + '/weights.mat', weights)
+        if args.aws == 'y':
+            k.key = directory_name + '/weights.mat'
+            k.set_contents_from_filename('weights.mat')
+            os.remove('weights.mat')
 
         #     # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
         #     f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:args.batch_size])
