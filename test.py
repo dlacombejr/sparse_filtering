@@ -184,7 +184,7 @@ def main():
         import boto
         from boto.s3.key import Key
         s3 = boto.connect_s3()
-        my_bucket = 'danbuckettest'
+        my_bucket = 'dlacombejr.bucket'
         bucket = s3.get_bucket(my_bucket)
         k = Key(bucket)
         directory_format = "./saved/%4d-%02d-%02d_%02dh%02dm%02ds"
