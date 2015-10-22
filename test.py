@@ -196,7 +196,7 @@ def main():
     pickle.dump(model, open(full_path, 'w'), pickle.HIGHEST_PROTOCOL)
     if args.aws == 'y':
         k.key = full_path
-        k.set_contents_from_filename('model.pkl')
+        k.set_contents_from_filename(full_path)
         os.remove(full_path)
 
     # create log file
