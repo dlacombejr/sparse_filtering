@@ -199,6 +199,13 @@ def main():
         k.set_contents_from_filename(full_path)
         os.remove(full_path)
 
+    # save weights separately
+    savemat(directory_name + '/weights.mat', weights)
+    if args.aws == 'y':
+        k.key = directory_name + '/weights.mat'
+        k.set_contents_from_filename(directory_name + '/weights.mat')
+        os.remove(directory_name + '/weights.mat')
+
     # create log file
     log_file = open(directory_name + "/log.txt", "wb")
     for m in range(len(args.model)):

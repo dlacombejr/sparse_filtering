@@ -61,12 +61,12 @@ def convolutional_norm(f):
         The row and column normalized matrix of activation.
     """
 
-    # """ original """
-    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
-    # l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
-    # nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
-    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
+    """ original """
+    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
+    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
+    f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
 
     # """ across image space """
     # fs = t.sqrt(t.sqr(f) + 1e-8)                      # ensure numerical stability
@@ -120,16 +120,16 @@ def convolutional_norm(f):
     # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[2, 3]))       # l2 norm of neuron dimension
     # f_hat = nfs_2 / l2fn.dimshuffle(0, 1, 'x', 'x')  # normalize non-neuron dimensions
 
-    # """ new concept from TODO """
-    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
-    l2fs = t.sqrt(t.sum(fs ** 2, axis=[0]))           # l2 norm of example dimension
-    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-
-    l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1]))     # l2 norm of image space
-    nfs_2 = nfs / l2fn.dimshuffle(0, 'x', 1, 2)   # normalize across non-image dimensions
-
-    l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[2, 3]))       # l2 norm of neuron dimension
-    f_hat = nfs_2 / l2fn.dimshuffle(0, 1, 'x', 'x')  # normalize non-neuron dimensions
+    # # """ new concept from TODO """ most recent
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=[0]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1]))     # l2 norm of image space
+    # nfs_2 = nfs / l2fn.dimshuffle(0, 'x', 1, 2)   # normalize across non-image dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[2, 3]))       # l2 norm of neuron dimension
+    # f_hat = nfs_2 / l2fn.dimshuffle(0, 1, 'x', 'x')  # normalize non-neuron dimensions
 
 
 
