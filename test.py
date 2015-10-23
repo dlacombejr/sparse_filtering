@@ -311,11 +311,11 @@ def main():
                     directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
                 )
 
-        savemat(directory_name + '/weights.mat', weights)
-        if args.aws == 'y':
-            k.key = directory_name + '/weights.mat'
-            k.set_contents_from_filename(directory_name + '/weights.mat')
-            os.remove(directory_name + '/weights.mat')
+        # savemat(directory_name + '/weights.mat', weights)
+        # if args.aws == 'y':
+        #     k.key = directory_name + '/weights.mat'
+        #     k.set_contents_from_filename(directory_name + '/weights.mat')
+        #     os.remove(directory_name + '/weights.mat')
 
         #     # f_hat, rec, err, f_hat_shuffled, f, p = outputs[l]()
         #     f_hat, rec, err, f_hat_shuffled, f, p = outputs[l](data[0:args.batch_size])
