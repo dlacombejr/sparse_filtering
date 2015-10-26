@@ -61,21 +61,21 @@ def convolutional_norm(f):
         The row and column normalized matrix of activation.
     """
 
-    """ original """
-    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
-    l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
-    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-    l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
-    f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
-
-    # """ across image space """
-    # fs = t.sqrt(t.sqr(f) + 1e-8)                      # ensure numerical stability
-    # # fs = f
-    # l2fs = t.sqrt(t.sum(t.sqr(fs), axis=0))           # l2 norm of example dimension
+    # """ original """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=0))           # l2 norm of example dimension
     # nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-    # l2fn = t.sqrt(t.sum(t.sqr(nfs), axis=[1, 2, 3]))  # axis=1))
-    # #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
-    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
+    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
+
+    """ across image space """
+    fs = t.sqrt(t.sqr(f) + 1e-8)                      # ensure numerical stability
+    # fs = f
+    l2fs = t.sqrt(t.sum(t.sqr(fs), axis=0))           # l2 norm of example dimension
+    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    l2fn = t.sqrt(t.sum(t.sqr(nfs), axis=[1, 2, 3]))  # axis=1))
+    #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
+    f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
 
     # """ new concept from TODO """
     # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
@@ -272,10 +272,11 @@ class ConvolutionalSF(SparseFilter):
         
         """ Perform 2D max pooling """
         
-        # return max_pool_2d(self.feed_forward(), ds=(2, 2))
-        # return max_pool_2d(self.dot(), ds=(2, 2))  # returning non-normalized activations
-        rectified = t.maximum(0, self.dot())
-        return max_pool_2d(rectified, ds=(2, 2), ignore_border=True)  # returning non-normalized activations
+        return max_pool_2d(self.feed_forward(), ds=(2, 2), ignore_border=True)
+        # return max_pool_2d(self.dot(), ds=(2, 2), ignore_border=True)  # returning normalized activations
+
+        # rectified = t.maximum(0, self.dot())
+        # return max_pool_2d(rectified, ds=(2, 2), ignore_border=True)  # returning non-normalized activations
 
 
 class GroupSF(SparseFilter):
