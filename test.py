@@ -35,8 +35,6 @@ def main():
             $ python test.py -m ConvolutionalSF -d 16 1 8 8 -v 1 -w y -c y -f CIFAR_data.mat -i 100
             $ python test.py -m ConvolutionalSF ConvolutionalSF -d 16 1 6 6 16 16 4 4 -w y -c y -f CIFAR_data.mat
               -i 100 150 -t y -v 1
-
-        In the convolutional case, the extra "1" is added automatically for broadcasting.
         -------------------------------------------------------------------------------------------------------------
         ''')
     )
@@ -58,6 +56,7 @@ def main():
     parser.add_argument("-e", "--examples", type=int, default=None, help="number of training examples")
     parser.add_argument("-b", "--batch_size", type=int, default=1000, help="number of examples in [mini]batch")
     parser.add_argument("-z", "--aws", default='n', help="run on aws: 'y' or 'n'")
+    parser.add_argument("-r", "--random", default='n', help="type of batches: random = 'y'")
     args = parser.parse_args()
     args.dimensions = parse_dims(args)
     args.iterations = parse_iter(args)
@@ -80,7 +79,7 @@ def main():
     if args.convolution == 'n':
         if args.whitening == 'y':
             data -= data.mean(axis=0)
-            data = whiten(data)
+            data = whiten(data.T).T
         elif args.whitening == 'n' and args.channels == 1:
             data -= data.mean(axis=0)
         # elif args.whitening == 'n' and args.channels == 3:
@@ -122,13 +121,18 @@ def main():
         assert args.group is not None
         assert args.step is not None
 
+    # assert that the number of neurons in each layer is a perfect square
+    for layer in xrange(len(args.dimensions)):
+        assert np.sqrt(args.dimensions[layer][0]) % np.floor(np.sqrt(args.dimensions[layer][0])) == 0
+
     ''' ============================= Build and train the network ============================= '''
 
     # construct the network
     print "building model..."
     model = sf.Network(
         model_type=args.model, weight_dims=args.dimensions, p=args.pool, group_size=args.group,
-        step=args.step, lr=args.learn_rate, opt=args.opt, c=args.convolution, test=args.test, batch_size=args.batch_size
+        step=args.step, lr=args.learn_rate, opt=args.opt, c=args.convolution, test=args.test,
+        batch_size=args.batch_size, random=args.random, weights=None
     )  # TODO: custom learning rates for each layer
 
     # compile the training, output, and test functions for the network
@@ -206,8 +210,19 @@ def main():
         k.set_contents_from_filename(directory_name + '/weights.mat')
         os.remove(directory_name + '/weights.mat')
 
+    # save the cost functions
+    savemat(directory_name + '/cost.mat', cost)
+    if args.aws == 'y':
+        k.key = directory_name + '/cost.mat'
+        k.set_contents_from_filename(directory_name + '/cost.mat')
+        os.remove(directory_name + '/cost.mat')
+
     # create log file
-    log_file = open(directory_name + "/log.txt", "wb")
+    log_file = open(directory_name + "/log.txt", "wb")  # todo: create log file by looping through args
+    # for arg in args:
+    #     log_file.write(
+    #         args.
+    #     )
     for m in range(len(args.model)):
         log_file.write(
             "Model layer %d: \n model:%s \n dimensions:%4s \n iterations:%3d \n" % (m,
@@ -232,7 +247,6 @@ def main():
         k.key = directory_name + "/log.txt"
         k.set_contents_from_filename(directory_name + "/log.txt")
         os.remove(directory_name + "/log.txt")
-
 
     ''' =============================== Verbosity Options ===================================== '''
 
@@ -278,38 +292,33 @@ def main():
             # error_recon['layer' + str(l)]['batch' + str(batch)] = rec
             # pooled['layer' + str(l)]['batch' + str(batch)] = p
 
-            activations_norm['layer' + str(l) + '_batch' + str(batch)] = f_hat
-            activations_raw['layer' + str(l) + '_batch' + str(batch)] = f
-            activations_shuffled['layer' + str(l) + '_batch' + str(batch)] = f_hat_shuffled
-            reconstruction['layer' + str(l) + '_batch' + str(batch)] = err
-            error_recon['layer' + str(l) + '_batch' + str(batch)] = rec
-            pooled['layer' + str(l) + '_batch' + str(batch)] = p
+            # define [mini]batch title
+            batch_title = 'layer' + str(l) + '_batch' + '%03d' % batch
+
+            # define norm and raw file names
+            norm_file_name = directory_name + '/activations_norm_' + batch_title + '.mat'
+            raw_file_name = directory_name + '/activation_raw_' + batch_title + '.mat'
+
+            activations_norm[batch_title] = f_hat
+            activations_raw[batch_title] = f
+            activations_shuffled[batch_title] = f_hat_shuffled
+            reconstruction[batch_title] = err
+            error_recon[batch_title] = rec
+            pooled[batch_title] = p
 
             # save model as well as weights and activations separately
-            savemat(directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' +
-                    str(batch) + '.mat', activations_norm)
-            savemat(directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' +
-                    str(batch) + '.mat', activations_raw)
+            savemat(norm_file_name, activations_norm)
+            # savemat(raw_file_name, activations_raw)
 
             if args.aws == 'y':
 
-                k.key = directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' + \
-                    str(batch) + '.mat'
-                k.set_contents_from_filename(
-                    directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
-                )
-                os.remove(
-                    directory_name + '/activations_norm_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
-                )
+                k.key = norm_file_name
+                k.set_contents_from_filename(norm_file_name)
+                os.remove(norm_file_name)
 
-                k.key = directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + \
-                    str(batch) + '.mat'
-                k.set_contents_from_filename(
-                    directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
-                )
-                os.remove(
-                    directory_name + '/activation_raw_' + 'layer' + str(l) + '_batch' + str(batch) + '.mat'
-                )
+                # k.key = raw_file_name
+                # k.set_contents_from_filename(raw_file_name)
+                # os.remove(raw_file_name)
 
         # savemat(directory_name + '/weights.mat', weights)
         # if args.aws == 'y':
@@ -331,6 +340,20 @@ def main():
         # savemat(directory_name + '/weights.mat', weights)
         # savemat(directory_name + '/activations_norm.mat', activations_norm)
         # savemat(directory_name + '/activation_raw.mat', activations_raw)
+
+    # output helper file for concatenating activations
+    helper = {'batches': n_batches, 'output_size': f_hat.shape}
+    helper_file_name = directory_name + '/helper.mat'
+    savemat(helper_file_name, helper)
+    if args.aws == 'y':
+        k.key = helper_file_name
+        k.set_contents_from_filename(helper_file_name)
+        os.remove(helper_file_name)
+
+    # get data if not on AWS
+    if args.aws == 'n':
+        f_hat, rec, err, f_hat_shuffled, f, p = outputs[model.n_layers - 1](data)
+        activations_norm = {"layer0": f_hat}
 
     # display figures
     if args.verbosity == 2:

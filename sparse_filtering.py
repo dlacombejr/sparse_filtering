@@ -12,9 +12,10 @@ import theano
 import numpy as np
 import utilities.BP as BP
 from theano import tensor as t
-from utilities.scaling import LCN
+from utilities.scaling import LCN, lcn_lacombe
 from utilities.init import init_weights
 from theano.tensor.nnet.conv import conv2d
+from theano.tensor.extra_ops import repeat
 import utilities.connections as connections
 from theano.tensor.signal.downsample import max_pool_2d
 
@@ -68,14 +69,47 @@ def convolutional_norm(f):
     # l2fn = t.sqrt(t.sum(nfs ** 2, axis=1))          # l2 norm of neuron dimension
     # f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
 
-    """ across image space """
-    fs = t.sqrt(t.sqr(f) + 1e-8)                      # ensure numerical stability
-    # fs = f
-    l2fs = t.sqrt(t.sum(t.sqr(fs), axis=0))           # l2 norm of example dimension
-    nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
-    l2fn = t.sqrt(t.sum(t.sqr(nfs), axis=[1, 2, 3]))  # axis=1))
-    #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
-    f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
+    # """ new idea 11/25/15 """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=[0, 2, 3]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 'x', 'x')        # normalize non-example dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[2, 3]))     # l2 norm of image space
+    # nfs_2 = nfs / l2fn.dimshuffle(0, 1, 'x', 'x')   # normalize across non-image dimensions
+    #
+    # l2fn = t.sqrt(t.sum(nfs_2 ** 2, axis=[1]))       # l2 norm of neuron dimension
+    # f_hat = nfs_2 / l2fn.dimshuffle(0, 'x', 1, 2)  # normalize non-neuron dimensions
+
+    """ idea from 12/1/15 """
+    fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    l2fs = t.sqrt(t.sum(fs ** 2, axis=[0, 2, 3]))           # l2 norm of example dimension
+    nfs = fs / l2fs.dimshuffle('x', 0, 'x', 'x')        # normalize non-example dimensions
+    l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1]))          # l2 norm of neuron dimension
+    f_hat = nfs / l2fn.dimshuffle(0, 'x', 1, 2)     # normalize non-neuron dimensions
+
+    # """ inverse sparse filtering """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=[1]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle(0, 'x', 1, 2)        # normalize non-example dimensions
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[0, 2, 3]))          # l2 norm of neuron dimension
+    # f_hat = nfs / l2fn.dimshuffle('x', 0, 'x', 'x')     # normalize non-neuron dimensions
+
+
+    # """ idea from 12/7/15 """
+    # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
+    # l2fs = t.sqrt(t.sum(fs ** 2, axis=[0, 2, 3]))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 'x', 'x')        # normalize non-example dimensions
+    # l2fn = t.sqrt(t.sum(nfs ** 2, axis=[1, 2, 3]))          # l2 norm of neuron dimension
+    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')     # normalize non-neuron dimensions
+
+    # """ across image space """
+    # fs = t.sqrt(t.sqr(f) + 1e-8)                      # ensure numerical stability
+    # # fs = f
+    # l2fs = t.sqrt(t.sum(t.sqr(fs), axis=0))           # l2 norm of example dimension
+    # nfs = fs / l2fs.dimshuffle('x', 0, 1, 2)        # normalize non-example dimensions
+    # l2fn = t.sqrt(t.sum(t.sqr(nfs), axis=[1, 2, 3]))  # axis=1))
+    # #  l2 norm of neuron dimension TODO: convert to across all dims 2 & 3
+    # f_hat = nfs / l2fn.dimshuffle(0, 'x', 'x', 'x')           # 1, 2)     # normalize non-neuron dimensions
 
     # """ new concept from TODO """
     # fs = t.sqrt(f ** 2 + 1e-8)                      # ensure numerical stability
@@ -243,7 +277,7 @@ class ConvolutionalSF(SparseFilter):
         
         """ Convolve input with model weights """        
         
-        f = conv2d(self.x, self.w, subsample=(1, 1))  #, border_mode='full')
+        f = conv2d(self.x, self.w, subsample=(1, 1))#[:,:,::2,::2]  # 1, 1  #, border_mode='full')
         # f = max_pool_2d(conv2d(self.x, self.w, subsample=(1, 1)), ds=(2, 2))  #, border_mode='full')
 
         return f
@@ -272,11 +306,15 @@ class ConvolutionalSF(SparseFilter):
         
         """ Perform 2D max pooling """
         
-        return max_pool_2d(self.feed_forward(), ds=(2, 2), ignore_border=True)
-        # return max_pool_2d(self.dot(), ds=(2, 2), ignore_border=True)  # returning normalized activations
+        return max_pool_2d(self.feed_forward(), ds=(2, 2), ignore_border=True, mode='sum')
+        # return max_pool_2d(self.dot(), ds=(2, 2), ignore_border=True, mode='sum')  # returning normalized activations
 
         # rectified = t.maximum(0, self.dot())
         # return max_pool_2d(rectified, ds=(2, 2), ignore_border=True)  # returning non-normalized activations
+
+    def sum_pool_quad(self):
+
+        return max_pool_2d(self.feed_forward(), ds=(48, 48), ignore_border=True, st=None, padding=(0, 0), mode='sum')
 
 
 class GroupSF(SparseFilter):
@@ -337,7 +375,57 @@ class GroupSF(SparseFilter):
         # compute gf_hat
         gf_hat = self.g_feed_forward()
         
-        return f_hat + (1 * gf_hat)
+        return gf_hat  # f_hat + (1 * t.sqrt(t.sqr(gf_hat)))  # f_hat + (1 * gf_hat)  #
+
+
+class MultiGroupSF(SparseFilter):
+
+    """ Multi-Group Sparse Filtering """
+
+    def __init__(self, w, x, g_mat1, gmat2):
+
+        """
+        Build a group sparse filtering model.
+
+        Parameters:
+        ----------
+        w : ndarray
+            Weight matrix randomly initialized.
+        x : ndarray (symbolic Theano variable)
+            Data for model.
+        g_mat : ndarray
+            [groups x neurons] binary array defining groups.
+        """
+
+        # initialize base sparse filter
+        SparseFilter.__init__(self, w, x)
+        # assign g_mat to model
+        self.g_mat1 = g_mat1
+        self.g_mat2 = gmat2
+        # self.group_size = np.sum(self.g_mat[0, :])
+        # define normalization procedure
+        self.norm = norm
+        # get initial f_hat
+        self.f_hat_init = self.feed_forward()
+
+    def g_feed_forward(self):
+
+        """ Perform grouped sparse filtering """
+
+        f_hat = self.feed_forward()
+        gf_hat1 = self.norm((t.dot(self.g_mat1, t.sqr(f_hat))))
+        gf_hat2 = self.norm((t.dot(self.g_mat2, t.sqr(gf_hat1))))
+
+        return f_hat, gf_hat1, gf_hat2
+
+    def criterion(self):
+
+        """ Returns the criterion for cost function """
+
+        # compute / determine hats
+        f_hat, gf_hat1, gf_hat2 = self.g_feed_forward()
+
+        return t.sum(f_hat) + (1 * t.sum(gf_hat1)) + (1 * t.sum(gf_hat2))
 
         
 class GroupConvolutionalSF(ConvolutionalSF):
@@ -402,7 +490,7 @@ class GroupConvolutionalSF(ConvolutionalSF):
         return group_f_reshaped
         
     def g_feed_forward(self):
-        
+
         """ Perform grouped convolutional sparse filtering """
         
         # reshape f_hat_l1
@@ -443,7 +531,7 @@ class Layer(object):
     """ Layer object within network """
     
     def __init__(self, model_type='SparseFilter', weight_dims=(100, 256), layer_input=None,
-                 p=None, group_size=None, step=None, lr=0.01, c = 'n'):   
+                 p=None, group_size=None, step=None, lr=0.01, c='n', weights=None):
         
         """
         Builds a layer for the network by constructing a model. 
@@ -471,11 +559,15 @@ class Layer(object):
         # assign network inputs to layer
         self.m = model_type
         self.weight_dims = weight_dims
-        self.w = init_weights(weight_dims)  # TODO: constrain L2-norm of weights to sum to unity
         self.x = layer_input
         self.p = p    
         self.lr = lr
         self.c = c
+
+        if weights is None:
+            self.w = init_weights(weight_dims)
+        elif weights is not None:
+            self.w = weights
         
         # build model based on model_type
         self.model = None
@@ -486,6 +578,13 @@ class Layer(object):
         elif model_type == 'GroupSF':
             self.g_mat = connections.gMatToroidal(self.weight_dims[0], group_size, step, centered='n')
             self.model = GroupSF(self.w, self.x, self.g_mat)
+        elif model_type == 'MultiGroupSF':
+            self.g_mat1 = connections.groupMat(self.weight_dims[0], group_size, step)
+            self.g_mat2 = connections.groupMat(
+                np.square(np.sqrt(self.weight_dims[0]) / 2),
+                group_size, step,
+            )
+            self.model = MultiGroupSF(self.w, self.x, self.g_mat1, self.g_mat2)
         elif model_type == 'GroupConvolutionalSF':
             self.g_mat = connections.gMatToroidal(self.weight_dims[0], group_size, step, centered='n')
             self.model = GroupConvolutionalSF(self.w, self.x, self.g_mat)
@@ -540,8 +639,10 @@ class Layer(object):
         
         """ Returns the cost and updates for the layer """
 
-        cost = t.sum(t.abs_(self.criterion()))
+        # cost = t.sum(t.abs_(self.criterion()))
+        cost = t.sum(t.abs_(t.log(self.criterion() + 1)))
         updates = BP.RMSprop(cost, self.w, lr=self.lr)
+        updates = BP.censor_updates(updates, self.c)
         
         return cost, updates
         
@@ -584,7 +685,8 @@ class Network(object):
     """ Neural network architecture """
     
     def __init__(self, model_type='SparseFilter', weight_dims=([100, 256], []), p=None,
-                 group_size=None, step=None, lr=0.01, opt='GD', c='n', test='n', batch_size=1000):
+                 group_size=None, step=None, lr=0.01, opt='GD', c='n', test='n', batch_size=1000,
+                 random='n', weights=None, lcn_kernel=None):
         
         """
         Neural network constructor. Defines a network architecture that builds 
@@ -621,6 +723,7 @@ class Network(object):
         self.c = c
         self.test = test
         self.batch_size = batch_size
+        self.random_batch = random
 
         # make assertions
         assert self.n_layers > 0
@@ -633,6 +736,8 @@ class Network(object):
 
         # for each layer, create a layer object
         for l in xrange(self.n_layers):
+
+            print "...for layer %d" % l
             
             if l == 0:                                                      # first layer
                 layer_input = self.x
@@ -641,21 +746,35 @@ class Network(object):
                 if self.c == 'n':
                     layer_input = self.layers[l - 1].feed_forward()
                 else:                                                       # i.e., convolutional
-                    layer_input = self.layers[l - 1].max_pool()             # TODO: pass f in feed-forward, not f_hat
+                    # layer_input = self.layers[l - 1].max_pool()             # TODO: pass f in feed-forward, not f_hat
+                    layer_input = self.layers[l - 1].feed_forward()
                     # TODO: linear rectified units before pooling!!!
 
                     # perform LCN for each channel before passing to next level
-                    for m in xrange(self.layers[l - 1].weight_dims[0]):
-                        layer_input = t.set_subtensor(layer_input[:, m, :, :],
-                                                      LCN(layer_input[:, m, :, :].dimshuffle(0, 'x', 1, 2),
-                                                      kernel_shape=5))
+                    # todo: perform LCN across all neurons simultaneously
+                    # for m in xrange(self.layers[l - 1].weight_dims[0]):
+                    #     layer_input = t.set_subtensor(layer_input[:, m, :, :],
+                    #                                   LCN(layer_input[:, m, :, :].dimshuffle(0, 'x', 1, 2),
+                    #                                   kernel_shape=5))
+                    if lcn_kernel is None:
+                        layer_input = lcn_lacombe(layer_input, kernel_shape=5, n_maps=self.layers[l - 1].weight_dims[0])
+                    else:
+                        layer_input = lcn_lacombe(
+                            layer_input,
+                            kernel_shape=lcn_kernel[l],
+                            n_maps=self.layers[l - 1].weight_dims[0]
+                        )
+                    # todo: replace lcn with mean removal?
+
+                    layer_input = max_pool_2d(layer_input, ds=(2, 2), ignore_border=True, mode='sum')
 
             # define layer and append to network layers
-            layer_l = Layer(model_type[l], weight_dims[l], layer_input, p, group_size, step, lr, c)
+            layer_l = Layer(model_type[l], weight_dims[l], layer_input, p, group_size, step, lr, c, weights)
             self.layers.append(layer_l)
 
     def training_functions(self, data):  # TODO: Move training_functions to __init__ so that train_fn is not overwritten
-        
+        # todo: make test function separate
+
         """
         Construct training functions for each layer. 
         
@@ -673,12 +792,30 @@ class Network(object):
             List of compiled theano functions for retrieving important variables.
         """
 
-        # index to a [mini]batch
-        index = t.lscalar('index')
+        # # index to a [mini]batch
+        # index = t.lscalar('index')
 
-        # define beginning and end of a batch given 'index'
-        batch_begin = index * self.batch_size
-        batch_end = batch_begin + self.batch_size
+        # create batches for training
+        indexer = None
+        batch_end = None
+        batch_begin = None
+        if self.random_batch == 'n':
+
+            # index to a [mini]batch
+            index = t.lscalar('index')
+
+            # define beginning and end of a batch given 'index'
+            batch_begin = index * self.batch_size
+            batch_end = batch_begin + self.batch_size
+
+        else:
+
+            # index to a [mini]batch
+            index = t.ivector('index')
+
+        #
+        #     # random [mini]batches
+        #     indexer = np.random.randint(data.shape[0], size=self.batch_size)
 
         # initialize empty function lists
         train_fns = []
@@ -689,7 +826,11 @@ class Network(object):
         data = theano.shared(data)
 
         # for each layer define a training, output, and test function
+        c = 0
         for l in self.layers:
+
+            print "...for layer %d" % c
+            c += 1
 
             # get outputs for theano functions
             w = l.get_weights()
@@ -712,15 +853,29 @@ class Network(object):
                 # fn = theano.function([], outputs=[cost, w], updates=updates,
                 #                      givens={self.x: data}, on_unused_input='ignore')
 
-                fn = theano.function(
-                    inputs=[index],
-                    outputs=[cost, w],
-                    updates=updates,
-                    givens={
-                        self.x: data[batch_begin:batch_end]
-                    },
-                    on_unused_input='ignore'
-                )
+                if self.random_batch == 'n':
+
+                    fn = theano.function(
+                        inputs=[index],
+                        outputs=[cost, w],
+                        updates=updates,
+                        givens={
+                            self.x: data[batch_begin:batch_end]
+                        },
+                        on_unused_input='ignore'
+                    )
+
+                elif self.random_batch == 'y':
+
+                    fn = theano.function(
+                        inputs=[index],
+                        outputs=[cost, w],
+                        updates=updates,
+                        givens={
+                            self.x: data[index]  # indexer
+                        },
+                        on_unused_input='ignore'
+                    )
 
                 train_fns.append(fn)
 
@@ -797,3 +952,28 @@ class Network(object):
                 test_fn.append(test)
 
         return train_fns, out_fns, test_fn
+
+    # todo: define image_synthesis function
+    def image_synthesis_function(self):
+
+        image = init_weights((1, weights.shape[1]))
+
+        synthesis_fns = []
+
+        for l in self.layers:
+
+            # get
+            f = l.get_activations()
+
+            fn = theano.function(
+                inputs=[],
+                outputs=[f],
+                givens={
+                    self.x: image
+                },
+                on_unused_input='ignore'
+            )
+
+            synthesis_fns.append(fn)
+
+        return synthesis_fns

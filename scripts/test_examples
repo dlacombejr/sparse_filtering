@@ -1,0 +1,1 @@
+python test.py -m ConvolutionalSF ConvolutionalSF ConvolutionalSF -c y -f CIFAR_data.mat -d 36 1 5 5 48 36 3 3 100 48 3 3 -l .001 -i 30 50 60 -v 1 -z y

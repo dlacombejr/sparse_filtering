@@ -13,7 +13,7 @@ Created on Mon Apr 13 01:21:01 2015
 import os
 import sparse_filtering
 import numpy as np
-from visualize import plotCost, drawplots
+from utilities.visualize import plotCost, drawplots
 from scipy.io import loadmat
     
 

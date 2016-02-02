@@ -38,10 +38,20 @@ def RMSprop(cost, params, lr=0.001, rho=0.9, epsilon=1e-6):
     # TODO: should second-level weights be considered constant (i.e., not bp through)
     
     
-def censor_updates(updates):
+def censor_updates(updates, conv):
+
+    if conv == 'n':
     
-    w = updates[1][0]
-    updated_w = updates[1][1]
-    constrained_w = T.dot(updated_w, T.diag(1 / T.sqrt(T.sum(updated_w ** 2, axis=0))))
-    new_update = [updates[0], (w, constrained_w)]
+        w = updates[1][0]
+        updated_w = updates[1][1]
+        constrained_w = T.dot(updated_w, T.diag(1 / T.sqrt(T.sum(updated_w ** 2, axis=0))))
+        new_update = [updates[0], (w, constrained_w)]
+
+    elif conv == 'y':
+
+        w = updates[1][0]
+        updated_w = updates[1][1]
+        constrained_w = updated_w / T.sqrt(T.sum(updated_w ** 2, axis=[1, 2, 3])).dimshuffle(0, 'x', 'x', 'x')
+        new_update = [updates[0], (w, constrained_w)]
+
     return new_update   
